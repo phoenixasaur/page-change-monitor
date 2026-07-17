@@ -1,4 +1,5 @@
 import hashlib
+from bs4 import BeautifulSoup
 import os
 from pathlib import Path
 
