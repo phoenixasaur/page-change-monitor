@@ -22,7 +22,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install requests
-        run: pip install requests
+        run: pip install requests beautifulsoup4
 
       - name: Check website
         env:
