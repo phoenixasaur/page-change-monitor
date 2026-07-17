@@ -31,7 +31,7 @@ jobs:
 
       - name: Save latest website version
         run: |
-          if git diff --quiet website_hash.txt; then
+          if [ -z "$(git status --porcelain website_hash.txt)" ]; then
             echo "No saved-state update needed."
           else
             git config user.name "github-actions[bot]"
