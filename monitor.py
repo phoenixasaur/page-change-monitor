@@ -1,51 +1,54 @@
 import hashlib
-from bs4 import BeautifulSoup
 import os
 from pathlib import Path
 
 import requests
+from bs4 import BeautifulSoup
 
 URL = "https://carnaldish.bigcartel.com/"
 STATE_FILE = Path("website_hash.txt")
-NTFY_TOPIC = os.environ.get("NTFY_TOPIC")
+NTFY_TOPIC = os.environ["NTFY_TOPIC"]
 
-response = requests.get(
-    URL,
-    timeout=30,
-    headers={"User-Agent": "Mozilla/5.0 Website Change Monitor"},
-)
+headers = {
+    "User-Agent": "Mozilla/5.0 (Website Monitor)"
+}
+
+response = requests.get(URL, headers=headers, timeout=30)
 response.raise_for_status()
 
-current_hash = hashlib.sha256(response.content).hexdigest()
+# Only monitor the visible text on the page
+soup = BeautifulSoup(response.text, "html.parser")
+
+# Remove things that change frequently but aren't meaningful
+for tag in soup(["script", "style", "noscript"]):
+    tag.decompose()
+
+visible_text = " ".join(soup.stripped_strings)
+
+current_hash = hashlib.sha256(visible_text.encode()).hexdigest()
 
 if not STATE_FILE.exists():
     STATE_FILE.write_text(current_hash)
     print("First check complete. Baseline saved.")
-
 else:
     previous_hash = STATE_FILE.read_text().strip()
 
     if current_hash != previous_hash:
-        print("The website changed!")
+        print("Website changed!")
 
-        if not NTFY_TOPIC:
-            raise RuntimeError("NTFY_TOPIC is not configured.")
-
-        notification = requests.post(
+        requests.post(
             f"https://ntfy.sh/{NTFY_TOPIC}",
-            data="Something changed on the Carnal Dish website!",
+            data="🍪 Carnal Dish website changed!\nhttps://carnaldish.bigcartel.com/",
             headers={
-                "Title": "Carnal Dish changed",
-                "Click": URL,
+                "Title": "Carnal Dish Update",
                 "Priority": "high",
-                "Tags": "cookie,rotating_light",
+                "Tags": "cookie,bell",
             },
             timeout=30,
         )
-        notification.raise_for_status()
 
         STATE_FILE.write_text(current_hash)
-        print("Notification sent and new version saved.")
+        print("Notification sent.")
 
     else:
-        print("No website changes detected.")
+        print("No changes detected.")
